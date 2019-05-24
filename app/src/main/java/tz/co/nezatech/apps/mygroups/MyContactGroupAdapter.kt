@@ -1,14 +1,12 @@
 package tz.co.nezatech.apps.mygroups
 
 import android.app.Activity
-import android.content.BroadcastReceiver
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import androidx.core.content.ContextCompat.startActivity
 import android.content.Intent
 
 
@@ -32,7 +30,7 @@ class MyContactGroupAdapter(private val myDataset: ArrayList<MyGroup>, val conte
         holder.layout.findViewById<TextView>(R.id.accountName).text = group.accountName
         holder.layout.setOnClickListener {
             Log.d(TAG, "Selected: ${group.title}")
-            val intent = Intent(context, BoadcastMessageActivity::class.java)
+            val intent = Intent(context, BroadcastMessageActivity::class.java)
             intent.putExtra("EXTRA_GROUP_ID", group.id)
             intent.putExtra("EXTRA_GROUP_TITLE", group.title)
             context.startActivity(intent)

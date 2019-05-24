@@ -1,27 +1,29 @@
 package tz.co.nezatech.apps.mygroups
 
 import android.Manifest
+import android.annotation.TargetApi
+import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.AsyncTask
+import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract
-import androidx.appcompat.app.AppCompatActivity;
-
-import kotlinx.android.synthetic.main.activity_boadcast_message.*
-import android.app.Activity
-import android.os.AsyncTask
+import android.telephony.SmsManager
+import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import android.os.Build
-import android.annotation.TargetApi
-import android.content.pm.PackageManager
-import android.telephony.SmsManager
-import android.util.Log
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.android.synthetic.main.activity_boadcast_message.*
 import kotlinx.android.synthetic.main.content_boadcast_message.*
 
+
 const val PERMISSIONS_REQUEST_SEND_SMS = 101
-class BoadcastMessageActivity : AppCompatActivity() {
+
+class BroadcastMessageActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,34 +44,11 @@ class BoadcastMessageActivity : AppCompatActivity() {
         }
     }
 
-    fun broadcast(contacts: ArrayList<MyContact>) {
+    private fun broadcast(contacts: ArrayList<MyContact>) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.SEND_SMS), PERMISSIONS_REQUEST_SEND_SMS)
         } else {
-            Log.d(TAG, "Size: ${contacts.size}")
-            val smgr = SmsManager.getDefault()
-            var msg = message.text.toString()
-            var exl = excludes.text.toString()
-            var excludes = ArrayList<String>()
-            exl.split(",").forEach {
-                var p = it.replace(" ", "")
-                if (p.isNotEmpty()) {
-                    p = p.substring(p.length - 9)
-                    excludes.add(p)
-                }
-            }
-            contacts.forEach {
-                var phone = it.phone.toString()
-                if (phone != null) {
-                    phone = phone.replace(" ", "")
-                    phone = phone.substring(phone.length - 9)
-                    if (!excludes.contains(phone)) {
-                        smgr.sendTextMessage(phone.toString(), null, msg, null, null)
-                    } else {
-                        Log.d(TAG, "Exclude: ${phone}")
-                    }
-                }
-            }
+            BroadcastTask(this, contacts, message.text.toString(), excludes.text.toString()).execute()
         }
     }
 
@@ -82,6 +61,56 @@ class BoadcastMessageActivity : AppCompatActivity() {
         }
     }
 
+    class BroadcastTask(
+        val context: Activity,
+        private val contacts: ArrayList<MyContact>,
+        private val message: String,
+        private val excludes: String
+    ) : AsyncTask<Void, Void, String>() {
+        override fun doInBackground(vararg params: Void?): String {
+            Log.d(TAG, "Size: ${contacts.size}")
+            val smgr = SmsManager.getDefault()
+            var msg = message
+            var exl = excludes
+            var excludes = ArrayList<String>()
+            exl.split(",").forEach {
+                var p = it.replace(" ", "")
+                if (p.isNotEmpty()) {
+                    p = p.substring(p.length - 9)
+                    excludes.add(p)
+                }
+            }
+            Log.d(TAG, "Excludes: $excludes")
+
+            contacts.forEach {
+                var phone = it.phone.toString()
+                if (phone != null) {
+                    phone = phone.replace(" ", "")
+                    phone = phone.substring(phone.length - 9)
+                    Log.d(TAG, "Sending to $phone")
+                    if (!excludes.contains(phone)) {
+                        phone = "+255$phone"
+                        val parts = smgr.divideMessage(msg)
+                        smgr.sendMultipartTextMessage(phone, null, parts, null, null)
+                    } else {
+                        Log.d(TAG, "Exclude: $phone")
+                    }
+                }
+            }
+            return "Successfully sent messages to ${contacts.size} group members!"
+        }
+
+        override fun onPreExecute() {
+            super.onPreExecute()
+            context.findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
+        }
+
+        override fun onPostExecute(msg: String) {
+            super.onPostExecute(msg)
+            Snackbar.make(context.findViewById<ProgressBar>(R.id.progress_bar), msg, Snackbar.LENGTH_LONG).show()
+            context.findViewById<ProgressBar>(R.id.progress_bar).visibility = View.GONE
+        }
+    }
 
     class LoadContactsTask(val context: Activity, val groupId: Int) : AsyncTask<Void, Void, ArrayList<MyContact>>() {
         override fun doInBackground(vararg params: Void?): ArrayList<MyContact> {

@@ -13,7 +13,7 @@
             android:supportsRtl="true"
             android:theme="@style/AppTheme">
         <activity
-                android:name=".BoadcastMessageActivity"
+                android:name=".BroadcastMessageActivity"
                 android:label="@string/title_activity_boadcast_message"
                 android:parentActivityName=".MainActivity"
                 android:theme="@style/AppTheme.NoActionBar">
